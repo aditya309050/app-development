@@ -4,7 +4,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Home, Book, FileText, BarChart2 } from 'lucide-react-native';
 import Dashboard from '../screens/Dashboard';
 import QuizScreen from '../screens/QuizScreen';
-import { NotesScreen, PYQScreen, RankingScreen } from '../screens/Placeholders';
+import { RankingScreen } from '../screens/Placeholders';
+import RealNotesScreen from '../screens/NotesScreen';
+import RealPYQScreen from '../screens/PYQScreen';
 import { theme } from '../theme';
 
 const Tab = createBottomTabNavigator();
@@ -14,6 +16,8 @@ const DashboardStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DashboardMain" component={Dashboard} />
     <Stack.Screen name="Quiz" component={QuizScreen} />
+    <Stack.Screen name="NotesHub" component={RealNotesScreen} />
+    <Stack.Screen name="PYQHub" component={RealPYQScreen} />
   </Stack.Navigator>
 );
 
@@ -42,14 +46,14 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name="Notes"
-        component={NotesScreen}
+        component={RealNotesScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Book color={color} size={size} />,
         }}
       />
       <Tab.Screen
         name="PYQ"
-        component={PYQScreen}
+        component={RealPYQScreen}
         options={{
           tabBarIcon: ({ color, size }) => <FileText color={color} size={size} />,
         }}

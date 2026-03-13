@@ -57,7 +57,8 @@ const Dashboard = ({ navigation }) => {
                 <BookOpen size={28} color="#4F46E5" />
               </View>
               <Text style={styles.actionText}>Notes</Text>
-              <Text style={styles.actionSubtext}>1.2k+ Files</Text>
+              <Text style={styles.actionSubtext}>Adda24, Google, Unacademy</Text>
+              <View style={styles.newBadge}><Text style={styles.newText}>LATEST</Text></View>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -68,7 +69,8 @@ const Dashboard = ({ navigation }) => {
                 <FileText size={28} color="#10B981" />
               </View>
               <Text style={styles.actionText}>PYQs</Text>
-              <Text style={styles.actionSubtext}>Solved Papers</Text>
+              <Text style={styles.actionSubtext}>Top Solved Papers</Text>
+              <View style={styles.newBadge}><Text style={styles.newText}>LATEST</Text></View>
             </TouchableOpacity>
           </View>
 
@@ -202,6 +204,8 @@ const styles = StyleSheet.create({
   examIndicator: { width: 6, height: 40, borderRadius: 3, marginRight: 16 },
   examName: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
   examTag: { color: '#94A3B8', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', marginTop: 2 },
+  newBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#4F46E5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  newText: { color: 'white', fontSize: 8, fontWeight: 'bold' },
 });
 
 export default Dashboard;

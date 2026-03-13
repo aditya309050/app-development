@@ -1,5 +1,4 @@
-import { View, Text, TouchableOpacity } from 'react-native';
-import { cn } from '../lib/utils';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
 
 interface CategoryCardProps {
@@ -10,6 +9,41 @@ interface CategoryCardProps {
   onPress?: () => void;
 }
 
+const variants = {
+  blue: {
+    bg: '#eff6ff',
+    border: '#dbeafe',
+    iconBg: '#dbeafe',
+    iconColor: '#3b82f6',
+    title: '#1e3a8a',
+    subtitle: '#2563eb'
+  },
+  green: {
+    bg: '#f0fdf4',
+    border: '#dcfce7',
+    iconBg: '#dcfce7',
+    iconColor: '#10b981',
+    title: '#064e3b',
+    subtitle: '#16a34a'
+  },
+  amber: {
+    bg: '#fffbeb',
+    border: '#fef3c7',
+    iconBg: '#fef3c7',
+    iconColor: '#d97706',
+    title: '#78350f',
+    subtitle: '#b45309'
+  },
+  slate: {
+    bg: '#f8fafc',
+    border: '#e2e8f0',
+    iconBg: '#e2e8f0',
+    iconColor: '#475569',
+    title: '#0f172a',
+    subtitle: '#475569'
+  }
+};
+
 export function CategoryCard({ 
   title, 
   subtitle, 
@@ -17,61 +51,54 @@ export function CategoryCard({
   variant = 'blue',
   onPress 
 }: CategoryCardProps) {
-  const variants = {
-    blue: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-100',
-      iconBg: 'bg-blue-100',
-      iconColor: '#3b82f6',
-      title: 'text-blue-900',
-      subtitle: 'text-blue-600'
-    },
-    green: {
-      bg: 'bg-green-50',
-      border: 'border-green-100',
-      iconBg: 'bg-green-100',
-      iconColor: '#10b981',
-      title: 'text-green-900',
-      subtitle: 'text-green-600'
-    },
-    amber: {
-      bg: 'bg-amber-50',
-      border: 'border-amber-100',
-      iconBg: 'bg-amber-100',
-      iconColor: '#d97706',
-      title: 'text-amber-900',
-      subtitle: 'text-amber-600'
-    },
-    slate: {
-      bg: 'bg-slate-50',
-      border: 'border-slate-200',
-      iconBg: 'bg-slate-200',
-      iconColor: '#475569',
-      title: 'text-slate-900',
-      subtitle: 'text-slate-600'
-    }
-  };
-
   const v = variants[variant];
 
   return (
     <TouchableOpacity 
       onPress={onPress}
-      className={cn(
-        "p-5 rounded-[28px] border flex-row items-center",
-        v.bg,
-        v.border
-      )}
+      style={[
+        styles.card,
+        { backgroundColor: v.bg, borderColor: v.border }
+      ]}
     >
-      <View className={cn("p-3 rounded-2xl mr-4", v.iconBg)}>
+      <View style={[styles.iconContainer, { backgroundColor: v.iconBg }]}>
         <Icon size={24} color={v.iconColor} />
       </View>
-      <View className="flex-1">
-        <Text className={cn("font-bold text-lg", v.title)}>{title}</Text>
+      <View style={styles.textContainer}>
+        <Text style={[styles.title, { color: v.title }]}>{title}</Text>
         {subtitle && (
-          <Text className={cn("text-sm", v.subtitle)}>{subtitle}</Text>
+          <Text style={[styles.subtitle, { color: v.subtitle }]}>{subtitle}</Text>
         )}
       </View>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    padding: 20,
+    borderRadius: 28,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconContainer: {
+    padding: 12,
+    borderRadius: 16,
+    marginRight: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textContainer: {
+    flex: 1,
+  },
+  title: {
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+});
