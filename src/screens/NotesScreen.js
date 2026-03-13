@@ -9,161 +9,200 @@ import {
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
 import { 
   Search, 
   FileText, 
   Download, 
   ArrowLeft, 
-  Filter,
-  ExternalLink,
-  BookOpen
+  BookOpen,
+  ChevronRight,
+  Library,
+  Layers,
+  Tag
 } from 'lucide-react-native';
-import { fetchNotes, NOTES_SOURCES } from '../data/notesService';
+import { fetchNotes, NOTES_SOURCES, getLibraryStructure, fetchChapterNotes } from '../data/notesService';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { theme } from '../theme';
 
 const NotesScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
   const [selectedSource, setSelectedSource] = useState('All');
-  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [targetExam, setTargetExam] = useState('SSC CGL / CHSL');
+  
+  // Navigation State
+  const [viewMode, setViewMode] = useState('subjects'); // subjects -> chapters -> notes
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [notesList, setNotesList] = useState([]);
 
   const sources = ['All', NOTES_SOURCES.ADDA247, NOTES_SOURCES.UNACADEMY, NOTES_SOURCES.GOOGLE];
 
   useEffect(() => {
-    loadNotes();
-  }, [selectedSource]);
+    fetchUserTarget();
+  }, []);
 
-  const loadNotes = async () => {
+  const fetchUserTarget = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().targetExam) {
+          setTargetExam(userDoc.data().targetExam);
+        }
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching target:", error);
+      setLoading(false);
+    }
+  };
+
+  const handleSubjectPress = (subject) => {
+    setSelectedSubject(subject);
+    setViewMode('chapters');
+  };
+
+  const handleChapterPress = async (chapter) => {
+    setSelectedChapter(chapter);
     setLoading(true);
-    const data = await fetchNotes(query, selectedSource);
-    setNotes(data);
+    const notes = await fetchChapterNotes(chapter.id, selectedSource);
+    setNotesList(notes);
+    setViewMode('notes');
     setLoading(false);
   };
 
-  const handleSearch = () => {
-    loadNotes();
+  const handleBack = () => {
+    if (viewMode === 'notes') {
+      setViewMode('chapters');
+      setSelectedChapter(null);
+    } else if (viewMode === 'chapters') {
+      setViewMode('subjects');
+      setSelectedSubject(null);
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleDownload = (item) => {
-    Alert.alert(
-      "Download Started",
-      `The file "${item.title}" from ${item.source} is being downloaded and will be saved to your device.`,
-      [{ text: "OK" }]
-    );
+    Alert.alert("Download Started", `"${item.title}" is being saved from ${item.source}.`);
   };
 
-  const renderNoteItem = ({ item }) => (
-    <TouchableOpacity style={styles.noteCard}>
-      <View style={styles.noteIconContainer}>
-        <FileText size={24} color="#EF4444" />
+  const renderSubjectCard = ({ item }) => (
+    <TouchableOpacity style={styles.subjectCard} onPress={() => handleSubjectPress(item)}>
+      <View style={[styles.subjectIcon, { backgroundColor: '#EEF2FF' }]}>
+        <Library size={32} color="#4F46E5" />
       </View>
-      <View style={styles.noteInfo}>
-        <Text style={styles.noteTitle} numberOfLines={2}>{item.title}</Text>
-        <View style={styles.noteMeta}>
-          <View style={[styles.sourceTag, getSourceStyle(item.source)]}>
-            <Text style={styles.sourceTagText}>{item.source}</Text>
-          </View>
-          <Text style={styles.noteDate}>{item.date}</Text>
-          <Text style={styles.noteSize}>{item.size}</Text>
-        </View>
-      </View>
-      <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownload(item)}>
-        <Download size={20} color="#4F46E5" />
-      </TouchableOpacity>
+      <Text style={styles.subjectTitle}>{item.subject}</Text>
+      <Text style={styles.subjectCount}>{item.chapters.length} Chapters</Text>
+      <ChevronRight size={20} color="#CBD5E1" style={styles.cardArrow} />
     </TouchableOpacity>
   );
 
-  const getSourceStyle = (source) => {
-    switch (source) {
-      case NOTES_SOURCES.ADDA247: return { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' };
-      case NOTES_SOURCES.UNACADEMY: return { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' };
-      case NOTES_SOURCES.GOOGLE: return { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' };
-      default: return { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' };
-    }
-  };
+  const renderChapterItem = ({ item }) => (
+    <TouchableOpacity style={styles.chapterItem} onPress={() => handleChapterPress(item)}>
+      <View style={styles.chapterInfo}>
+        <Text style={styles.chapterTitle}>{item.title}</Text>
+        <View style={styles.topicRow}>
+          {item.topics.map((t, idx) => (
+            <View key={idx} style={styles.topicTag}>
+              <Tag size={10} color="#64748B" style={{marginRight: 4}} />
+              <Text style={styles.topicText}>{t}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={styles.chapterMeta}>
+        <Text style={styles.notesBadge}>{item.notesCount} Files</Text>
+        <ChevronRight size={18} color="#94A3B8" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderNoteCard = ({ item }) => (
+    <TouchableOpacity style={styles.noteCard} onPress={() => handleDownload(item)}>
+      <View style={styles.noteIconBox}>
+        <FileText size={24} color="#EF4444" />
+      </View>
+      <View style={styles.noteInfo}>
+        <Text style={styles.noteTitle}>{item.title}</Text>
+        <View style={styles.noteMeta}>
+          <Text style={styles.sourceText}>{item.source}</Text>
+          <View style={styles.dot} />
+          <Text style={styles.sizeText}>{item.size}</Text>
+        </View>
+      </View>
+      <Download size={20} color="#4F46E5" />
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Header */}
+      {/* Dynamic Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerBtn}>
           <ArrowLeft size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Study Notes Hub</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Search Section */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Search size={20} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search latest PDF notes..."
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={handleSearch}
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={handleSearch} style={styles.goBtn}>
-              <Text style={styles.goBtnText}>Go</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.headerText}>
+          <Text style={styles.headerTitle}>
+            {viewMode === 'subjects' ? 'Study Library' : (selectedSubject?.subject)}
+          </Text>
+          <Text style={styles.headerSubtitle}>{targetExam}</Text>
         </View>
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Source Tabs */}
-      <View style={styles.tabsContainer}>
-        <FlatList
-          data={sources}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[
-                styles.tab, 
-                selectedSource === item && styles.activeTab
-              ]}
-              onPress={() => setSelectedSource(item)}
-            >
-              <Text style={[
-                styles.tabText, 
-                selectedSource === item && styles.activeTabText
-              ]}>
-                {item}
-              </Text>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.tabsList}
-        />
-      </View>
-
-      {/* Results */}
       {loading ? (
-        <View style={styles.centerContainer}>
+        <View style={styles.center}>
           <ActivityIndicator size="large" color="#4F46E5" />
-          <Text style={styles.loadingText}>Fetching latest notes...</Text>
         </View>
-      ) : notes.length > 0 ? (
-        <FlatList
-          data={notes}
-          keyExtractor={(item) => item.id}
-          renderItem={renderNoteItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
       ) : (
-        <View style={styles.centerContainer}>
-          <BookOpen size={64} color="#CBD5E1" />
-          <Text style={styles.emptyText}>No notes found for "{query}"</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadNotes}>
-            <Text style={styles.retryBtnText}>Refresh</Text>
-          </TouchableOpacity>
-        </View>
+        <>
+          {viewMode === 'subjects' && (
+            <FlatList
+              data={getLibraryStructure(targetExam)}
+              renderItem={renderSubjectCard}
+              keyExtractor={item => item.subject}
+              contentContainerStyle={styles.listPadding}
+              ListHeaderComponent={() => (
+                <View style={styles.welcomeBox}>
+                  <Text style={styles.welcomeTitle}>Chapter Wise Notes</Text>
+                  <Text style={styles.welcomeDesc}>Select a subject to browse high-quality syllabus-based notes.</Text>
+                </View>
+              )}
+            />
+          )}
+
+          {viewMode === 'chapters' && (
+            <FlatList
+              data={selectedSubject?.chapters}
+              renderItem={renderChapterItem}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.listPadding}
+            />
+          )}
+
+          {viewMode === 'notes' && (
+            <FlatList
+              data={notesList}
+              renderItem={renderNoteCard}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.listPadding}
+              ListHeaderComponent={() => (
+                <View style={styles.chapterHeader}>
+                  <Text style={styles.chapterName}>{selectedChapter?.title}</Text>
+                  <Text style={styles.chapterSources}>Sourced from Adda247, Unacademy & Google</Text>
+                </View>
+              )}
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -175,72 +214,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
-    paddingVertical: 16,
+    padding: 20, 
     backgroundColor: 'white',
-  },
-  backBtn: { padding: 8 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
-  searchSection: { padding: 20, backgroundColor: 'white' },
-  searchBar: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#F1F5F9', 
-    borderRadius: 16, 
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  searchInput: { flex: 1, marginLeft: 12, fontSize: 16, color: '#1E293B' },
-  goBtn: { backgroundColor: '#4F46E5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
-  goBtnText: { color: 'white', fontWeight: 'bold' },
-  tabsContainer: { backgroundColor: 'white', paddingBottom: 10 },
-  tabsList: { paddingHorizontal: 20, gap: 12 },
-  tab: { 
-    paddingHorizontal: 20, 
-    paddingVertical: 10, 
-    borderRadius: 25, 
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: 'transparent'
-  },
-  activeTab: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
-  tabText: { color: '#64748B', fontWeight: '600' },
-  activeTabText: { color: '#4F46E5' },
-  listContent: { padding: 20, paddingBottom: 100 },
-  noteCard: { 
-    backgroundColor: 'white', 
-    borderRadius: 20, 
-    padding: 16, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.05
   },
-  noteIconContainer: { 
-    width: 48, 
-    height: 48, 
-    backgroundColor: '#FEF2F2', 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    justifyContent: 'center' 
+  headerBtn: { padding: 8, backgroundColor: '#F1F5F9', borderRadius: 12 },
+  headerText: { alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
+  headerSubtitle: { fontSize: 11, color: '#4F46E5', fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
+  listPadding: { padding: 20 },
+  welcomeBox: { marginBottom: 24 },
+  welcomeTitle: { fontSize: 24, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },
+  welcomeDesc: { fontSize: 14, color: '#64748B', lineHeight: 20 },
+  subjectCard: { 
+    backgroundColor: 'white', 
+    padding: 20, 
+    borderRadius: 24, 
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    elevation: 2
   },
-  noteInfo: { flex: 1, marginLeft: 16 },
-  noteTitle: { fontSize: 15, fontWeight: 'bold', color: '#1E293B', marginBottom: 6 },
-  noteMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sourceTag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-  sourceTagText: { fontSize: 10, fontWeight: 'bold', color: '#1E293B' },
-  noteDate: { fontSize: 11, color: '#94A3B8' },
-  noteSize: { fontSize: 11, color: '#94A3B8' },
-  downloadBtn: { padding: 10, backgroundColor: '#F1F5F9', borderRadius: 12 },
-  centerContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  loadingText: { marginTop: 16, color: '#64748B', fontSize: 16 },
-  emptyText: { marginTop: 16, color: '#94A3B8', fontSize: 16, textAlign: 'center' },
-  retryBtn: { marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#4F46E5', borderRadius: 12 },
-  retryBtnText: { color: 'white', fontWeight: 'bold' }
+  subjectIcon: { width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  subjectTitle: { flex: 1, fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
+  subjectCount: { fontSize: 12, color: '#94A3B8', position: 'absolute', bottom: 20, left: 100 },
+  cardArrow: { marginLeft: 10 },
+  chapterItem: { 
+    backgroundColor: 'white', 
+    padding: 16, 
+    borderRadius: 20, 
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9'
+  },
+  chapterInfo: { flex: 1 },
+  chapterTitle: { fontSize: 16, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },
+  topicRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  topicTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
+  topicText: { fontSize: 10, color: '#64748B', fontWeight: '600' },
+  chapterMeta: { alignItems: 'flex-end', marginLeft: 12 },
+  notesBadge: { fontSize: 10, color: '#4F46E5', fontWeight: 'bold', marginBottom: 4 },
+  noteCard: { 
+    backgroundColor: 'white', 
+    padding: 16, 
+    borderRadius: 20, 
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9'
+  },
+  noteIconBox: { width: 44, height: 44, backgroundColor: '#FEF2F2', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  noteInfo: { flex: 1 },
+  noteTitle: { fontSize: 15, fontWeight: 'bold', color: '#1E293B', marginBottom: 4 },
+  noteMeta: { flexDirection: 'row', alignItems: 'center' },
+  sourceText: { fontSize: 11, color: '#4F46E5', fontWeight: '700' },
+  dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#CBD5E1', marginHorizontal: 8 },
+  sizeText: { fontSize: 11, color: '#94A3B8' },
+  chapterHeader: { marginBottom: 24, alignItems: 'center' },
+  chapterName: { fontSize: 22, fontWeight: 'bold', color: '#1E293B', marginBottom: 4 },
+  chapterSources: { fontSize: 12, color: '#94A3B8' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
 export default NotesScreen;

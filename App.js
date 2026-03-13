@@ -17,27 +17,45 @@ export default function App() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
+    let unsubscribeDoc = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (authenticatedUser) => {
+      // Clean up previous doc listener if any
+      if (unsubscribeDoc) unsubscribeDoc();
+
       if (authenticatedUser) {
         setUser(authenticatedUser);
         
-        // Listen to user document for onboarding status
         const userDocRef = doc(db, "users", authenticatedUser.uid);
-        const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setOnboardingComplete(docSnap.data().onboardingComplete || false);
+        
+        // Listen to user document
+        unsubscribeDoc = onSnapshot(userDocRef, 
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setOnboardingComplete(docSnap.data().onboardingComplete || false);
+            } else {
+              // Doc might not exist yet if signup setDoc is slow
+              setOnboardingComplete(false);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Firestore loading error:", error);
+            // Even on error, we should stop the global loading spinner
+            setLoading(false);
           }
-          setLoading(false);
-        });
-
-        return () => unsubscribeDoc();
+        );
       } else {
         setUser(null);
+        setOnboardingComplete(false);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, []);
 
   if (loading) {

@@ -19,29 +19,44 @@ import {
   History
 } from 'lucide-react-native';
 import { fetchNotes, NOTES_SOURCES } from '../data/notesService';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const PYQScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
   const [selectedSource, setSelectedSource] = useState('All');
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [targetExam, setTargetExam] = useState('SSC CGL / CHSL');
 
   const sources = ['All', NOTES_SOURCES.ADDA247, NOTES_SOURCES.UNACADEMY, NOTES_SOURCES.GOOGLE];
 
   useEffect(() => {
+    fetchUserTarget();
+  }, []);
+
+  useEffect(() => {
     loadPapers();
-  }, [selectedSource]);
+  }, [selectedSource, targetExam]);
+
+  const fetchUserTarget = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().targetExam) {
+          setTargetExam(userDoc.data().targetExam);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching target:", error);
+    }
+  };
 
   const loadPapers = async () => {
     setLoading(true);
-    // Reusing the same service but filtering for "Papers" or simulated logic
-    const data = await fetchNotes(query, selectedSource);
-    // Simulating specific PYQ data
-    const pyqData = data.map(item => ({
-      ...item,
-      title: item.title.includes('Paper') || item.title.includes('Solved') ? item.title : `${item.title} Solved Paper`,
-    }));
-    setPapers(pyqData);
+    const data = await fetchNotes(query, selectedSource, 'pyqs', targetExam);
+    setPapers(data);
     setLoading(false);
   };
 
@@ -85,7 +100,10 @@ const PYQScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ArrowLeft size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Solved PYQs</Text>
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text style={styles.headerTitle}>Solved PYQs</Text>
+          <Text style={styles.headerSubTitle}>{targetExam}</Text>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
@@ -148,7 +166,8 @@ const PYQScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: 'white' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
+  headerSubTitle: { fontSize: 11, color: '#10B981', fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
   searchBox: { padding: 20, backgroundColor: 'white' },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 50 },
   input: { flex: 1, marginLeft: 12, fontSize: 16 },

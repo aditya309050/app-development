@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Target, ChevronRight, CheckCircle2 } from 'lucide-react-native';
 import { auth, db } from '../config/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { theme } from '../theme';
 
 const EXAM_TARGETS = [
@@ -36,10 +36,10 @@ const TargetSelectionScreen = ({ navigation }) => {
     try {
       const user = auth.currentUser;
       if (user) {
-        await updateDoc(doc(db, "users", user.uid), {
+        await setDoc(doc(db, "users", user.uid), {
           targetExam: selectedTarget.name,
           onboardingComplete: true
-        });
+        }, { merge: true });
         // App.js listener will pick up the change and navigate to Home
       }
     } catch (error) {
