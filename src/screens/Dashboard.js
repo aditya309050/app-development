@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StyleSheet, Dimensions } from 'react-native';
-import { BookOpen, FileText, Trophy, GraduationCap, ChevronRight, Bell, Search, Zap } from 'lucide-react-native';
+import { BookOpen, FileText, Trophy, User, ChevronRight, LogOut, Search, Zap } from 'lucide-react-native';
+import { auth } from '../config/firebase';
+import { signOut } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -12,16 +14,25 @@ const Dashboard = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <GraduationCap size={28} color="white" />
-              </View>
+              <TouchableOpacity 
+                style={styles.avatar}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                {auth.currentUser?.displayName ? (
+                  <Text style={styles.avatarText}>
+                    {auth.currentUser.displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                  </Text>
+                ) : (
+                  <User size={24} color="white" />
+                )}
+              </TouchableOpacity>
               <View>
-                <Text style={styles.userTag}>Learning Partner</Text>
-                <Text style={styles.userName}>Hi, Aditya 👋</Text>
+                <Text style={styles.userTag}>Welcome back,</Text>
+                <Text style={styles.userName}>{auth.currentUser?.displayName?.split(' ')[0] || 'Scholar'} 👋</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.notifBtn}>
-              <Bell size={22} color="white" />
+            <TouchableOpacity style={styles.notifBtn} onPress={() => signOut(auth)}>
+              <LogOut size={22} color="white" />
             </TouchableOpacity>
           </View>
           
@@ -139,11 +150,13 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { 
-    width: 48, height: 48, backgroundColor: 'rgba(255,255,255,0.2)', 
-    borderRadius: 16, alignItems: 'center', justifyContent: 'center', 
-    marginRight: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' 
+    width: 52, height: 52, backgroundColor: 'rgba(255,255,255,0.2)', 
+    borderRadius: 18, alignItems: 'center', justifyContent: 'center', 
+    marginRight: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
+    elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5
   },
-  userTag: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  avatarText: { color: 'white', fontSize: 18, fontWeight: '800', letterSpacing: 1 },
+  userTag: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '600', marginBottom: 2 },
   userName: { color: 'white', fontSize: 24, fontWeight: 'bold' },
   notifBtn: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   progressCard: { 
