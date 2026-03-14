@@ -48,7 +48,17 @@ const SignupScreen = ({ navigation }) => {
 
       // Navigation is handled by auth state listener in App.js
     } catch (error) {
-      Alert.alert("Signup Failed", error.message);
+      let errorMessage = "An error occurred during sign up.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email address is already in use.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "The email address is badly formatted.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "The password is too weak. Please use a stronger password.";
+      } else {
+        errorMessage = error.message;
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }

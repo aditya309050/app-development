@@ -32,7 +32,21 @@ const LoginScreen = ({ navigation }) => {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       // Success is handled by auth state listener in App.js
     } catch (error) {
-      Alert.alert("Login Failed", error.message);
+      let errorMessage = "An error occurred during sign in.";
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = "The email address is badly formatted.";
+      } else if (
+        error.code === 'auth/user-not-found' || 
+        error.code === 'auth/wrong-password' || 
+        error.code === 'auth/invalid-credential'
+      ) {
+        errorMessage = "Incorrect email or password.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed login attempts. Please try again later.";
+      } else {
+        errorMessage = error.message;
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
