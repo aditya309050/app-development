@@ -8,6 +8,7 @@ import { RankingScreen } from '../screens/Placeholders';
 import RealNotesScreen from '../screens/NotesScreen';
 import RealPYQScreen from '../screens/PYQScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import PersonalInfoScreen from '../screens/PersonalInfoScreen';
 import { theme } from '../theme';
 
 const Tab = createBottomTabNavigator();
@@ -20,6 +21,7 @@ const DashboardStack = () => (
     <Stack.Screen name="NotesHub" component={RealNotesScreen} />
     <Stack.Screen name="PYQHub" component={RealPYQScreen} />
     <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
   </Stack.Navigator>
 );
 

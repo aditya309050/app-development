@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -19,12 +19,41 @@ import {
   ArrowLeft,
   Award
 } from 'lucide-react-native';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { signOut } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { theme } from '../theme';
 
 const ProfileScreen = ({ navigation }) => {
   const user = auth.currentUser;
+  const [userData, setUserData] = useState({ points: 0, streak: 0 });
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    if (user?.uid) {
+      unsubscribe = onSnapshot(doc(db, "users", user.uid), (docHit) => {
+        if (docHit.exists()) {
+          const data = docHit.data();
+          setUserData({
+            points: data.totalScore || 0,
+            streak: data.streak || 0,
+            targetExam: data.targetExam || 'Not Selected'
+          });
+        }
+      });
+    }
+    return () => unsubscribe();
+  }, [user]);
+
+  const getRankInfo = (points) => {
+    if (points >= 5000) return { title: 'Diamond Rank', color: '#00BFFF' };
+    if (points >= 2000) return { title: 'Platinum Rank', color: '#E5E4E2' };
+    if (points >= 1000) return { title: 'Gold Rank', color: theme.colors.gold || '#FFD700' };
+    if (points >= 500) return { title: 'Silver Rank', color: '#C0C0C0' };
+    return { title: 'Bronze Rank', color: '#CD7F32' };
+  };
+
+  const rankInfo = getRankInfo(userData.points);
 
   const handleLogout = () => {
     Alert.alert(
@@ -77,18 +106,18 @@ const ProfileScreen = ({ navigation }) => {
           
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>{userData.streak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>850</Text>
+              <Text style={styles.statValue}>{userData.points}</Text>
               <Text style={styles.statLabel}>Points</Text>
             </View>
             <View style={statDivider} />
             <View style={styles.statBox}>
-              <Award size={20} color={theme.colors.gold} />
-              <Text style={styles.statLabel}>Silver Rank</Text>
+              <Award size={20} color={rankInfo.color} />
+              <Text style={styles.statLabel}>{rankInfo.title}</Text>
             </View>
           </View>
         </View>
@@ -100,12 +129,14 @@ const ProfileScreen = ({ navigation }) => {
             title="Personal Information" 
             subtitle="Manage your name and data"
             color="#4F46E5"
+            onPress={() => navigation.navigate('PersonalInfo')}
           />
           <ProfileItem 
             icon={Target} 
-            title="My Target Goal" 
-            subtitle="Change your target exam focus"
+            title={userData.targetExam || "My Target Goal"} 
+            subtitle="Fixed learning target"
             color="#10B981"
+            onPress={() => Alert.alert("Target Fixed", "Your target exam is fixed based on your initial selection.")}
           />
         </View>
 

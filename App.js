@@ -24,6 +24,7 @@ export default function App() {
       if (unsubscribeDoc) unsubscribeDoc();
 
       if (authenticatedUser) {
+        setLoading(true); // Don't render until we know the onboarding status
         setUser(authenticatedUser);
         
         const userDocRef = doc(db, "users", authenticatedUser.uid);
@@ -34,14 +35,12 @@ export default function App() {
             if (docSnap.exists()) {
               setOnboardingComplete(docSnap.data().onboardingComplete || false);
             } else {
-              // Doc might not exist yet if signup setDoc is slow
               setOnboardingComplete(false);
             }
             setLoading(false);
           },
           (error) => {
             console.error("Firestore loading error:", error);
-            // Even on error, we should stop the global loading spinner
             setLoading(false);
           }
         );
