@@ -1,12 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StyleSheet, Dimensions } from 'react-native';
 import { BookOpen, FileText, Trophy, User, ChevronRight, LogOut, Search, Zap } from 'lucide-react-native';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { signOut } from 'firebase/auth';
+import { doc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
 const Dashboard = ({ navigation }) => {
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [currentRank, setCurrentRank] = useState(1);
+
+  useEffect(() => {
+    let unsubscribeUser = () => {};
+    let unsubscribeRank = () => {};
+    
+    if (auth.currentUser) {
+      unsubscribeUser = onSnapshot(doc(db, "users", auth.currentUser.uid), (docHit) => {
+        if (docHit.exists()) {
+          setTotalPoints(docHit.data().totalScore || 0);
+        }
+      });
+
+      const q = query(collection(db, "users"), orderBy("totalScore", "desc"));
+      unsubscribeRank = onSnapshot(q, (snapshot) => {
+        let rank = 1;
+        let found = false;
+        snapshot.forEach((docHit) => {
+          if (!found) {
+            if (docHit.id === auth.currentUser.uid) {
+              found = true;
+            } else {
+              rank++;
+            }
+          }
+        });
+        setCurrentRank(rank);
+      });
+    }
+    return () => {
+      unsubscribeUser();
+      unsubscribeRank();
+    };
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -41,12 +78,12 @@ const Dashboard = ({ navigation }) => {
               <Trophy size={20} color="white" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.progressLabel}>Daily GK Challenge</Text>
-              <Text style={styles.progressValue}>Current Rank: #12</Text>
+              <Text style={styles.progressLabel}>Daily Challenge</Text>
+              <Text style={styles.progressValue}>Current Rank: #{currentRank}</Text>
             </View>
             <View style={styles.divider} />
             <View style={{ alignItems: 'center' }}>
-              <Text style={styles.pointsValue}>850</Text>
+              <Text style={styles.pointsValue}>{totalPoints}</Text>
               <Text style={styles.pointsLabel}>Points</Text>
             </View>
           </View>
@@ -93,8 +130,8 @@ const Dashboard = ({ navigation }) => {
               <View style={styles.liveBadge}>
                 <Text style={styles.liveText}>LIVE NOW</Text>
               </View>
-              <Text style={styles.quizTitle}>Daily GK Marathon</Text>
-              <Text style={styles.quizMeta}>15 Questions • 10 Mins</Text>
+              <Text style={styles.quizTitle}>Daily Challenge</Text>
+              <Text style={styles.quizMeta}>20 Questions • 10 Mins</Text>
               <View style={styles.startBtn}>
                 <Text style={styles.startBtnText}>Start Challenge</Text>
                 <Zap size={16} color="white" fill="white" />
