@@ -17,7 +17,8 @@ import {
   ChevronRight, 
   LogOut, 
   ArrowLeft,
-  Award
+  Award,
+  Briefcase
 } from 'lucide-react-native';
 import { auth, db } from '../config/firebase';
 import { signOut } from 'firebase/auth';
@@ -137,6 +138,17 @@ const ProfileScreen = ({ navigation }) => {
             subtitle="Fixed learning target"
             color="#10B981"
             onPress={() => Alert.alert("Target Fixed", "Your target exam is fixed based on your initial selection.")}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Partner Portal</Text>
+          <ProfileItem 
+            icon={Briefcase} 
+            title="Coaching Registration" 
+            subtitle="Register institute & upload content"
+            color="#8B5CF6"
+            onPress={() => navigation.navigate('CoachingRegistration')}
           />
         </View>
 

@@ -3,31 +3,30 @@ import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StyleSheet, Dim
 import { X, Trophy, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { examSpecificQuestions } from '../data/mock';
 import { auth, db } from '../config/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
 
-// Deterministic PRNG
-function pseudoRandom(seed) {
-  let value = 0;
-  for(let i=0; i<seed.length; i++) {
-    value = (value * 31 + seed.charCodeAt(i)) % 2147483647;
+function getRandomQuiz(questions) {
+  const shuffle = (arr) => arr.slice().sort(() => 0.5 - Math.random());
+  
+  let easy = shuffle(questions.filter(q => q.difficulty === 'easy'));
+  let hard = shuffle(questions.filter(q => q.difficulty === 'hard'));
+  let extreme = shuffle(questions.filter(q => q.difficulty === 'extreme'));
+  
+  if (easy.length === 0 && hard.length === 0 && extreme.length === 0) {
+    return shuffle(questions).slice(0, 20);
   }
-  if (value <= 0) value = 1;
-  return function() {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
+  
+  let selected = [];
+  selected.push(...easy.splice(0, 7));
+  selected.push(...hard.splice(0, 7));
+  selected.push(...extreme.splice(0, 6));
+  
+  const remaining = shuffle([...easy, ...hard, ...extreme]);
+  while (selected.length < 20 && remaining.length > 0) {
+    selected.push(remaining.pop());
   }
-}
-
-// Generate an exact set of 20 questions based on date and attempt number!
-function getDeterministicQuiz(questions, dateString, attemptNumber) {
-  const seedString = `${dateString}_attempt_${attemptNumber}`;
-  const random = pseudoRandom(seedString);
-  let shuffled = [...questions];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    let j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, 20); // Pick up to 20 deterministic questions
+  
+  return shuffle(selected);
 }
 
 const { width } = Dimensions.get('window');
@@ -72,13 +71,12 @@ export default function QuizScreen({ navigation }) {
             }
             const baseQuestions = examSpecificQuestions[target] || examSpecificQuestions['Default'];
             
-            // This guarantees the same subset of questions for everyone taking Attempt N today!
-            const finalQuestions = getDeterministicQuiz(baseQuestions, todayString, dailyAttempts);
+            // This guarantees a random mix of questions every time!
+            const finalQuestions = getRandomQuiz(baseQuestions);
             setQuizData(finalQuestions);
           } else {
-            const todayString = new Date().toISOString().split('T')[0];
             const baseQuestions = examSpecificQuestions['SSC CGL / CHSL'];
-            setQuizData(getDeterministicQuiz(baseQuestions, todayString, 0));
+            setQuizData(getRandomQuiz(baseQuestions));
           }
         }
       } catch (error) {
@@ -153,8 +151,8 @@ export default function QuizScreen({ navigation }) {
           const todayString = new Date().toISOString().split('T')[0];
           
           await setDoc(doc(db, "users", user.uid), {
-            totalScore: totalScore + pointsToAdd,
-            dailyQuizAttempts: quizAttempts + 1,
+            totalScore: increment(pointsToAdd),
+            dailyQuizAttempts: increment(1),
             lastQuizDate: todayString
           }, { merge: true });
         }
